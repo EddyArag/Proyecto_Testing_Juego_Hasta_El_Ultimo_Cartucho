@@ -7,7 +7,6 @@ import math
 import random
 import sys
 
-# Importación estratégica modularizada
 from constants import *
 from utils import AssetManager, SoundGenerator
 from weapons import CHARACTER_WEAPONS
@@ -314,12 +313,17 @@ class Game:
         self.substate = Game.SUBSTATE_EXPLODING
 
     def end_turn_cycle(self):
+        """Finaliza la ronda restableciendo los tanques a su capacidad energética máxima."""
         self.projectiles_queue.clear()
         self.current_explosion = None
         self.current_turn = (self.current_turn + 1) % 2
         self.turn_timer = 30.0
         self.randomize_wind()
         self.substate = Game.SUBSTATE_AIMING
+        
+        # --- REABASTECIMIENTO DE COMBUSTIBLE PARA AMBOS TANQUES ---
+        self.player1.fuel = self.player1.max_fuel
+        self.player2.fuel = self.player2.max_fuel
 
     def draw_aiming_radar(self, surface):
         player = self.get_current_player()
@@ -539,5 +543,3 @@ class Game:
 if __name__ == "__main__":
     game_instance = Game()
     game_instance.run()
-
-# === VERSIÓN FINAL 6 - Rotación del Tanque según Inclinación del Terreno + Cañón Relativo - Para curso de Testing ===

@@ -1,5 +1,5 @@
 # ==============================================================================
-# MÓDULO: ENTIDADES CINEMÁTICAS ACTIVAS
+# MÓDULO: ENTIDADES CINEMÁTICAS ACTIVAS (CON LÍMITE DE COMBUSTIBLE)
 # ==============================================================================
 
 import pygame
@@ -21,8 +21,13 @@ class Tank:
         self.gold = 300
         self.next_damage_mult = 1.0
         
-        self.base_angle = 0.0  
-        self.angle = 45.0 if x < WIDTH/2 else 135.0  
+        # --- SISTEMA DE COMBUSTIBLE ENERGÉTICO ---
+        self.max_fuel = 100.0
+        self.fuel = self.max_fuel
+        
+        # Inclinaciones y Ángulos (Alineación Estricta al Gunbound Original)
+        self.base_angle = 0.0  # Ángulo de inclinación del terreno actual
+        self.angle = 45.0 if x < WIDTH/2 else 135.0  # Ángulo relativo controlado por el usuario
         
         self.power = 0.0
         self.speed = 1.5 if mobile_type == 'Heavy' else (2.4 if mobile_type == 'Knight' else 2.0)
@@ -80,6 +85,15 @@ class Tank:
         if self.muzzle_flash_frames > 0: self.muzzle_flash_frames -= 1
 
     def move(self, direction, terrain):
+        """Desplaza al tanque consumiendo combustible de manera lineal."""
+        if self.fuel <= 0:
+            self.is_moving = False
+            return  # Bloqueo absoluto de motricidad por falta de energía
+
+        # Consumo de combustible proporcional a la velocidad y tasa de gasto
+        fuel_cost = abs(direction * self.speed) * 0.45
+        self.fuel = max(0.0, self.fuel - fuel_cost)
+
         self.x += direction * self.speed
         self.wheel_rotation += direction * 0.3
         self.is_moving = True
@@ -121,6 +135,7 @@ class Tank:
         bx = pivot_x + math.cos(abs_rad) * barrel_len
         by = pivot_y - math.sin(abs_rad) * barrel_len
 
+        # 1. RENDERIZADO DEL CAÑÓN
         if asset_mgr.use_sprites:
             orig_cannon = asset_mgr.sprites[self.mobile_type]['cannon']
             rotated_cannon = pygame.transform.rotate(orig_cannon, abs_angle)
@@ -130,6 +145,7 @@ class Tank:
         else:
             pygame.draw.line(surface, (236, 240, 241), (pivot_x, pivot_y), (int(bx), int(by)), 4)
 
+        # 2. RENDERIZADO DEL CHASIS
         if asset_mgr.use_sprites:
             if not self.is_moving:
                 frame_sprite = asset_mgr.sprites[self.mobile_type]['idle']
@@ -151,6 +167,7 @@ class Tank:
                 w_cx, w_cy = self.rotate_point_helper(cx, cy, draw_x + wx, draw_y - 4, self.base_angle)
                 pygame.draw.circle(surface, (44, 62, 80), (w_cx, w_cy), 5)
 
+        # 3. RENDERIZADO DEL MUZZLE FLASH
         if self.muzzle_flash_frames > 0:
             if asset_mgr.use_sprites and asset_mgr.sprites['muzzle_flash']:
                 mf_sprite = asset_mgr.sprites['muzzle_flash']
@@ -161,16 +178,26 @@ class Tank:
                 pygame.draw.circle(surface, (254, 202, 87), (int(bx), int(by)), 9)
                 pygame.draw.circle(surface, COLOR_WHITE, (int(bx), int(by)), 5)
 
+        # 4. ELEMENTOS ESTÁTICOS DE INTERFAZ INTEGRADA (HP / SHIELD / FUEL)
         bar_w = 46
         bx_pos = draw_x - bar_w // 2
-        by_pos = draw_y - 42
-        pygame.draw.rect(surface, (50, 50, 50), (bx_pos, by_pos, bar_w, 5))
-        hp_ratio = max(0.0, min(1.0, self.health / self.max_health))
-        pygame.draw.rect(surface, (46, 204, 113), (bx_pos, by_pos, int(bar_w * hp_ratio), 5))
+        by_pos = draw_y - 46
         
+        # Render de Barra de Salud (Verde)
+        pygame.draw.rect(surface, (50, 50, 50), (bx_pos, by_pos, bar_w, 4))
+        hp_ratio = max(0.0, min(1.0, self.health / self.max_health))
+        pygame.draw.rect(surface, (46, 204, 113), (bx_pos, by_pos, int(bar_w * hp_ratio), 4))
+        
+        # Render de Barra de Escudo si está activo (Celeste)
         if self.shield > 0:
             sh_ratio = max(0.0, min(1.0, self.shield / 50.0))
-            pygame.draw.rect(surface, (52, 152, 219), (bx_pos, by_pos + 6, int(bar_w * sh_ratio), 3))
+            pygame.draw.rect(surface, (52, 152, 219), (bx_pos, by_pos + 5, int(bar_w * sh_ratio), 3))
+            by_pos += 4
+            
+        # Render de Barra de Combustible Flotante (Amarilla/Oro)
+        pygame.draw.rect(surface, (50, 50, 50), (bx_pos, by_pos + 5, bar_w, 3))
+        fuel_ratio = max(0.0, min(1.0, self.fuel / self.max_fuel))
+        pygame.draw.rect(surface, (254, 211, 48), (bx_pos, by_pos + 5, int(bar_w * fuel_ratio), 3))
 
         font_tag = pygame.font.SysFont("Arial", 11, bold=True)
         txt_name = font_tag.render(self.name, True, COLOR_WHITE)
