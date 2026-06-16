@@ -7,7 +7,7 @@ Es un simulador táctico de artillería por turnos en **2D** fuertemente inspira
 ## 🔧 Manual de Instalación y Despliegue
 
 ### Requisitos Previos
-* **Python 3.8 o superior** instalado en el sistema.
+* **Python 3.8 o superiores antes de 3.14r** instalado en el sistema.
 * La librería gráfica **Pygame**.
 
 ### Pasos para la Ejecución
